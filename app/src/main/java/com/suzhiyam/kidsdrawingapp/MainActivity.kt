@@ -1,20 +1,61 @@
 package com.suzhiyam.kidsdrawingapp
 
+import android.Manifest
 import android.app.Dialog
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.provider.MediaStore
 import android.view.View
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.core.view.get
 
 class MainActivity : AppCompatActivity() {
 
+    val openGalleryLauncher: ActivityResultLauncher<Intent> =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            if (it.resultCode == RESULT_OK && it.data != null) {
+                findViewById<ImageView>(R.id.backgroundImage).setImageURI(it.data?.data)
+            }
+        }
+
+    val requestPermission: ActivityResultLauncher<Array<String>> =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissionGrants ->
+            permissionGrants.entries.forEach {
+                if (it.value) {
+                    Toast.makeText(
+                        this,
+                        "Permission is granted now. You can read the storage files!",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    val pickImageIntent = Intent(
+                        Intent.ACTION_PICK,
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                    )
+                    openGalleryLauncher.launch(pickImageIntent)
+                } else {
+                    if (it.key == Manifest.permission.READ_EXTERNAL_STORAGE) {
+                        Toast.makeText(
+                            this,
+                            "You just denied the permission!",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+        }
+
     private var drawingView: DrawingView? = null
     private var brushButton: ImageButton? = null
     private var selectedColorButton: ImageButton? = null
+    private var selectImageButton: ImageButton? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -22,6 +63,7 @@ class MainActivity : AppCompatActivity() {
 
         drawingView = findViewById(R.id.drawing_view)
         brushButton = findViewById(R.id.brush)
+        selectImageButton = findViewById(R.id.addImage)
         drawingView!!.setBrushThickness(20.toFloat())
 
         val linearLayout = findViewById<LinearLayout>(R.id.colors)
@@ -36,6 +78,30 @@ class MainActivity : AppCompatActivity() {
         brushButton!!.setOnClickListener {
             showBrushSizeDialog()
         }
+
+        selectImageButton!!.setOnClickListener {
+            requestStoragePermissions()
+        }
+    }
+
+    private fun requestStoragePermissions() {
+        if (shouldShowRequestPermissionRationale(Manifest.permission.READ_EXTERNAL_STORAGE)) {
+            showRationaleDialog("Kids Drawing App", "App needs to access external storage")
+        } else {
+            requestPermission.launch(
+                arrayOf(
+                    Manifest.permission.READ_EXTERNAL_STORAGE
+                )
+            )
+        }
+    }
+
+    private fun showRationaleDialog(title: String, message: String) {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle(title).setMessage(message).setPositiveButton("Cancel") { dialog, _ ->
+            dialog.dismiss()
+        }
+        builder.create().show()
     }
 
     fun showBrushSizeDialog() {
