@@ -56,6 +56,7 @@ class MainActivity : AppCompatActivity() {
     private var brushButton: ImageButton? = null
     private var selectedColorButton: ImageButton? = null
     private var selectImageButton: ImageButton? = null
+    private var undoImageButton: ImageButton? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,6 +65,7 @@ class MainActivity : AppCompatActivity() {
         drawingView = findViewById(R.id.drawing_view)
         brushButton = findViewById(R.id.brush)
         selectImageButton = findViewById(R.id.addImage)
+        undoImageButton = findViewById(R.id.undo)
         drawingView!!.setBrushThickness(20.toFloat())
 
         val linearLayout = findViewById<LinearLayout>(R.id.colors)
@@ -81,6 +83,10 @@ class MainActivity : AppCompatActivity() {
 
         selectImageButton!!.setOnClickListener {
             requestStoragePermissions()
+        }
+
+        undoImageButton!!.setOnClickListener {
+            drawingView!!.onClickUndo()
         }
     }
 

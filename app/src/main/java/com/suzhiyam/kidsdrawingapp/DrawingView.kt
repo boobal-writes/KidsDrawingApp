@@ -16,6 +16,7 @@ class DrawingView(context: Context, attributes: AttributeSet) : View(context, at
     private var color = Color.BLACK
     private var canvas: Canvas? = null
     private var mPaths = mutableListOf<CustomPath>()
+    private var mUndoPaths = mutableListOf<CustomPath>()
 
     init {
         setUpDrawing()
@@ -92,6 +93,13 @@ class DrawingView(context: Context, attributes: AttributeSet) : View(context, at
     fun setColor(newColor: String) {
         val color = Color.parseColor(newColor)
         mDrawPaint!!.color = color
+    }
+
+    fun onClickUndo() {
+        if (mPaths.isNotEmpty()) {
+            mUndoPaths.add(mPaths.removeLast())
+            invalidate()
+        }
     }
 
     internal inner class CustomPath(
