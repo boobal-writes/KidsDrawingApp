@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.media.MediaScannerConnection
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.View
@@ -204,6 +205,7 @@ class MainActivity : AppCompatActivity() {
                             "Image saved successfully at ${file.absolutePath}!",
                             Toast.LENGTH_LONG
                         ).show()
+                        shareImage(file.absolutePath)
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -219,17 +221,29 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun shareImage(filePath: String) {
+        MediaScannerConnection.scanFile(this, arrayOf(filePath), null) { path, uri ->
+            val shareIntent = Intent()
+            shareIntent.action = Intent.ACTION_SEND
+            shareIntent.putExtra(Intent.EXTRA_STREAM, uri)
+            shareIntent.type = "image/png"
+            startActivity(Intent.createChooser(shareIntent, "Share"))
+        }
+    }
+
     private fun isReadStorageAllowed(): Boolean {
         val result =
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
         return result == PackageManager.PERMISSION_GRANTED
     }
+
     private fun cancelProgressDialog() {
         if (progressDialog != null) {
             progressDialog!!.dismiss()
             progressDialog = null
         }
     }
+
     private fun showProgressDialog() {
         progressDialog = Dialog(this)
         progressDialog!!.setContentView(R.layout.dialog_custom_progress)
