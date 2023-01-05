@@ -3,19 +3,27 @@ package com.suzhiyam.kidsdrawingapp
 import android.Manifest
 import android.app.Dialog
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.View
-import android.widget.ImageButton
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.Toast
+import android.widget.*
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.get
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
 
 class MainActivity : AppCompatActivity() {
 
@@ -57,6 +65,7 @@ class MainActivity : AppCompatActivity() {
     private var selectedColorButton: ImageButton? = null
     private var selectImageButton: ImageButton? = null
     private var undoImageButton: ImageButton? = null
+    private var saveImageButton: ImageButton? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,6 +75,7 @@ class MainActivity : AppCompatActivity() {
         brushButton = findViewById(R.id.brush)
         selectImageButton = findViewById(R.id.addImage)
         undoImageButton = findViewById(R.id.undo)
+        saveImageButton = findViewById(R.id.save)
         drawingView!!.setBrushThickness(20.toFloat())
 
         val linearLayout = findViewById<LinearLayout>(R.id.colors)
@@ -88,6 +98,29 @@ class MainActivity : AppCompatActivity() {
         undoImageButton!!.setOnClickListener {
             drawingView!!.onClickUndo()
         }
+        saveImageButton!!.setOnClickListener {
+            if (isReadStorageAllowed()) {
+                lifecycleScope.launch {
+                    val frame = findViewById<FrameLayout>(R.id.frame)
+                    saveImage(getBitmapFormView(frame))
+                }
+            }
+        }
+
+    }
+
+    private fun getBitmapFormView(view: View): Bitmap {
+        val bitmapToBeReturned =
+            Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmapToBeReturned)
+        val bgDrawable = view.background
+        if (bgDrawable != null) {
+            bgDrawable.draw(canvas)
+        } else {
+            canvas.drawColor(Color.WHITE)
+        }
+        view.draw(canvas)
+        return bitmapToBeReturned
     }
 
     private fun requestStoragePermissions() {
@@ -96,7 +129,8 @@ class MainActivity : AppCompatActivity() {
         } else {
             requestPermission.launch(
                 arrayOf(
-                    Manifest.permission.READ_EXTERNAL_STORAGE
+                    Manifest.permission.READ_EXTERNAL_STORAGE,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
                 )
             )
         }
@@ -142,5 +176,49 @@ class MainActivity : AppCompatActivity() {
             )
             selectedColorButton = view
         }
+    }
+
+    private suspend fun saveImage(bitmap: Bitmap?) {
+        withContext(Dispatchers.IO) {
+            if (bitmap != null) {
+                try {
+                    val bitmapOutputSteam = ByteArrayOutputStream()
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 90, bitmapOutputSteam)
+
+                    val fileName = listOf(
+                        externalCacheDir?.absoluteFile.toString(),
+                        "KDA_${System.currentTimeMillis() / 1000}.png"
+                    ).joinToString(File.separator)
+                    val file = File(fileName)
+                    val fileOutputStream = FileOutputStream(file)
+                    fileOutputStream.write(bitmapOutputSteam.toByteArray())
+                    fileOutputStream.close()
+                    bitmapOutputSteam.close()
+
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Image saved successfully at ${file.absolutePath}!",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Oops! Something went wrong!",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun isReadStorageAllowed(): Boolean {
+        val result =
+            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+        return result == PackageManager.PERMISSION_GRANTED
     }
 }
