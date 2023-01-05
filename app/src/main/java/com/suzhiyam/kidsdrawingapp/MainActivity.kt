@@ -27,14 +27,14 @@ import java.io.FileOutputStream
 
 class MainActivity : AppCompatActivity() {
 
-    val openGalleryLauncher: ActivityResultLauncher<Intent> =
+    private val openGalleryLauncher: ActivityResultLauncher<Intent> =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
             if (it.resultCode == RESULT_OK && it.data != null) {
                 findViewById<ImageView>(R.id.backgroundImage).setImageURI(it.data?.data)
             }
         }
 
-    val requestPermission: ActivityResultLauncher<Array<String>> =
+    private val requestPermission: ActivityResultLauncher<Array<String>> =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissionGrants ->
             permissionGrants.entries.forEach {
                 if (it.value) {
@@ -66,6 +66,7 @@ class MainActivity : AppCompatActivity() {
     private var selectImageButton: ImageButton? = null
     private var undoImageButton: ImageButton? = null
     private var saveImageButton: ImageButton? = null
+    private var progressDialog: Dialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,6 +101,7 @@ class MainActivity : AppCompatActivity() {
         }
         saveImageButton!!.setOnClickListener {
             if (isReadStorageAllowed()) {
+                showProgressDialog()
                 lifecycleScope.launch {
                     val frame = findViewById<FrameLayout>(R.id.frame)
                     saveImage(getBitmapFormView(frame))
@@ -144,7 +146,7 @@ class MainActivity : AppCompatActivity() {
         builder.create().show()
     }
 
-    fun showBrushSizeDialog() {
+    private fun showBrushSizeDialog() {
         val dialog = Dialog(this)
         dialog.setContentView(R.layout.dialog_brush_size)
         dialog.setTitle("Brush Size: ")
@@ -196,6 +198,7 @@ class MainActivity : AppCompatActivity() {
                     bitmapOutputSteam.close()
 
                     runOnUiThread {
+                        cancelProgressDialog()
                         Toast.makeText(
                             this@MainActivity,
                             "Image saved successfully at ${file.absolutePath}!",
@@ -220,5 +223,16 @@ class MainActivity : AppCompatActivity() {
         val result =
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
         return result == PackageManager.PERMISSION_GRANTED
+    }
+    private fun cancelProgressDialog() {
+        if (progressDialog != null) {
+            progressDialog!!.dismiss()
+            progressDialog = null
+        }
+    }
+    private fun showProgressDialog() {
+        progressDialog = Dialog(this)
+        progressDialog!!.setContentView(R.layout.dialog_custom_progress)
+        progressDialog!!.show()
     }
 }
